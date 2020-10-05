@@ -43,6 +43,7 @@ object Example {
     val facts = NonEmptyList.of(
       name,
       age,
+      dateOfBirth,
       weight,
       weightSelfReported,
       bloodPressure,

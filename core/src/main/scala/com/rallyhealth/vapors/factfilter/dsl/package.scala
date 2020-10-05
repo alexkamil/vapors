@@ -24,7 +24,7 @@ package object dsl extends FactFilterDsl with Evaluation {
     * @tparam X the type of input
     * @tparam A the free parameter, used to describe the eventual output of the [[FreeApplicative]] functor
     */
-  final type Exp[X, A] = FreeApplicative[ExpAlg[X, *], A]
+  final type Exp[X, A] = FreeApplicative[ExpAlg[Facts, X, *], A]
 
   /**
     * An expression that terminates into a boolean, used for making a conditional query or filter.

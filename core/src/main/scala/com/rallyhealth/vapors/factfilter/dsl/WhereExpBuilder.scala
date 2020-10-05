@@ -40,7 +40,7 @@ object CondBuilder {
 final class CondBuilder[T, U](private val lens: NamedLens[T, U]) extends AnyVal {
 
   private[CondBuilder] def wrap(cond: CondExp[U]): CondExp[T] =
-    FreeApplicative.lift(ExpAlg.Select[T, U, Boolean](lens, cond))
+    FreeApplicative.lift(ExpAlg.Select[Facts, T, U, Boolean](lens, cond))
 
   def at[V](selector: NamedLens[T, U] => NamedLens[T, V]): CondBuilder[T, V] = new CondBuilder(selector(lens))
 
@@ -68,8 +68,8 @@ class WhereBuilder[T, U <: T : ClassTag : TypeTag] private[dsl] (factTypeSet: Fa
   private def whereAny[V](
     lens: NamedLens[TypedFact[U], V],
     buildExp: CondBuilder[TypedFact[U], V] => CondExp[TypedFact[U]],
-  ): ExpAlg[FactsOfType[U], TypedResultSet[U]] = {
-    ExpAlg.Exists[FactsOfType[U], TypedFact[U], TypedResultSet[U]](
+  ): ExpAlg[Facts, FactsOfType[U], TypedResultSet[U]] = {
+    ExpAlg.Exists[Facts, FactsOfType[U], TypedFact[U], TypedResultSet[U]](
       _.toList,
       buildExp(new CondBuilder(lens)),
       FactsMatch(_),
@@ -89,9 +89,9 @@ class WhereBuilder[T, U <: T : ClassTag : TypeTag] private[dsl] (factTypeSet: Fa
     }
   }
 
-  private def collectFacts(exp: ExpAlg[FactsOfType[U], TypedResultSet[U]]): TerminalFactsExp = {
+  private def collectFacts(exp: ExpAlg[Facts, FactsOfType[U], TypedResultSet[U]]): TerminalFactsExp = {
     FreeApplicative.lift {
-      ExpAlg.Collect[Facts, FactsOfType[U], ResultSet](
+      ExpAlg.Collect[Facts, Facts, FactsOfType[U], ResultSet](
         s"Fact[${typeNameOf[U]}]",
         facts => NonEmptyList.fromList(facts.collect(factTypeSet.collector)),
         FreeApplicative.lift(exp).map(rs => rs: ResultSet),
@@ -103,8 +103,8 @@ class WhereBuilder[T, U <: T : ClassTag : TypeTag] private[dsl] (factTypeSet: Fa
   private def whereEvery[V](
     lens: NamedLens[TypedFact[U], V],
     buildExp: CondBuilder[TypedFact[U], V] => CondExp[TypedFact[U]],
-  ): ExpAlg[FactsOfType[U], TypedResultSet[U]] = {
-    ExpAlg.ForAll[FactsOfType[U], TypedFact[U], TypedResultSet[U]](
+  ): ExpAlg[Facts, FactsOfType[U], TypedResultSet[U]] = {
+    ExpAlg.ForAll[Facts, FactsOfType[U], TypedFact[U], TypedResultSet[U]](
       _.toList,
       buildExp(new CondBuilder(lens)),
       FactsMatch(_),

@@ -1,5 +1,7 @@
 package com.rallyhealth.vapors.core.evaluator
 
+import java.time.LocalDate
+
 import cats.data.NonEmptyList
 import cats.instances.string._
 import com.rallyhealth.vapors.factfilter.Example._
@@ -91,6 +93,28 @@ final class FreeApEvaluatorSpec extends AnyWordSpec {
         }
       }
       assertResult(FactsMatch(NonEmptyList.of(JoeSchmoe.bloodPressure))) {
+        evalWithFacts(JoeSchmoe.facts)(q)
+      }
+    }
+
+    "allow embedding terminal facts expressions inside conditions" in {
+      val likelyToUseWeightloss = {
+        withType(FactTypes.ProbabilityToUse).whereAnyFactValue { value =>
+          value.at(_.select(_.scores).atKey("weightloss")).exists {
+            _ > 0.4
+          }
+        }
+      }
+      val q = {
+        withType(FactTypes.DateOfBirth)
+          .whereAnyFactValue { dateOfBirth =>
+            and(
+              dateOfBirth < LocalDate.now().minusYears(18),
+              likelyToUseWeightloss,
+            )
+          }
+      }
+      assertResult(FactsMatch(NonEmptyList.of(JoeSchmoe.dateOfBirth, JoeSchmoe.probs))) {
         evalWithFacts(JoeSchmoe.facts)(q)
       }
     }

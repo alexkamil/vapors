@@ -11,6 +11,7 @@ import scala.language.existentials
 // TODO: Split out generic logical tests so that other types can be tested with these logical operations
 final class LogicalOperatorSpec extends AnyWordSpec {
 
+  // TODO: Make this generic to the facts type in the origin (maybe a GenExp in the core?)
   type LogicOpBuilder[T, A] = (Exp[T, A], Exp[T, A], Seq[Exp[T, A]]) => Exp[T, A]
 
   private def validLogicalOperators[T, A : Intersect : Union](
@@ -18,7 +19,7 @@ final class LogicalOperatorSpec extends AnyWordSpec {
     orBuilder: LogicOpBuilder[T, A],
     trueBuilder: Exp[T, A],
     falseBuilder: Exp[T, A],
-    input: T,
+    input: (Facts, T),
     trueOutput: A,
     falseOutput: A,
   ): Unit = {
@@ -43,7 +44,7 @@ final class LogicalOperatorSpec extends AnyWordSpec {
         or(T, F)
       }
       assertResult(trueOutput) {
-        eval(input)(q)
+        evalAtStep(input)(q)
       }
     }
 
@@ -52,7 +53,7 @@ final class LogicalOperatorSpec extends AnyWordSpec {
         or(F, F, T, F)
       }
       assertResult(trueOutput) {
-        eval(input)(q)
+        evalAtStep(input)(q)
       }
     }
 
@@ -61,7 +62,7 @@ final class LogicalOperatorSpec extends AnyWordSpec {
         or(F, F, F, F)
       }
       assertResult(falseOutput) {
-        eval(input)(q)
+        evalAtStep(input)(q)
       }
     }
 
@@ -70,7 +71,7 @@ final class LogicalOperatorSpec extends AnyWordSpec {
         and(T, F)
       }
       assertResult(falseOutput) {
-        eval(input)(q)
+        evalAtStep(input)(q)
       }
     }
 
@@ -79,7 +80,7 @@ final class LogicalOperatorSpec extends AnyWordSpec {
         and(T, T)
       }
       assertResult(trueOutput) {
-        eval(input)(q)
+        evalAtStep(input)(q)
       }
     }
 
@@ -88,7 +89,7 @@ final class LogicalOperatorSpec extends AnyWordSpec {
         and(T, T, F, T)
       }
       assertResult(falseOutput) {
-        eval(input)(q)
+        evalAtStep(input)(q)
       }
     }
 
@@ -97,7 +98,7 @@ final class LogicalOperatorSpec extends AnyWordSpec {
         and(T, T, T, T)
       }
       assertResult(trueOutput) {
-        eval(input)(q)
+        evalAtStep(input)(q)
       }
     }
 
@@ -106,7 +107,7 @@ final class LogicalOperatorSpec extends AnyWordSpec {
         and(or(T, T), or(T, T))
       }
       assertResult(trueOutput) {
-        eval(input)(q)
+        evalAtStep(input)(q)
       }
     }
 
@@ -115,7 +116,7 @@ final class LogicalOperatorSpec extends AnyWordSpec {
         and(or(F, F), T, T)
       }
       assertResult(falseOutput) {
-        eval(input)(q)
+        evalAtStep(input)(q)
       }
     }
 
@@ -124,7 +125,7 @@ final class LogicalOperatorSpec extends AnyWordSpec {
         and(T, or(T, F), or(F, F))
       }
       assertResult(falseOutput) {
-        eval(input)(q)
+        evalAtStep(input)(q)
       }
     }
 
@@ -133,7 +134,7 @@ final class LogicalOperatorSpec extends AnyWordSpec {
         or(F, and(F, F), and(T, T), and(T, F))
       }
       assertResult(trueOutput) {
-        eval(input)(q)
+        evalAtStep(input)(q)
       }
     }
 
@@ -142,7 +143,7 @@ final class LogicalOperatorSpec extends AnyWordSpec {
         or(F, and(F, T), or(F, F), and(or(T, F), F), or(and(T, F), T))
       }
       assertResult(trueOutput) {
-        eval(input)(q)
+        evalAtStep(input)(q)
       }
     }
   }
@@ -163,7 +164,7 @@ final class LogicalOperatorSpec extends AnyWordSpec {
         builder.orBuilder,
         trueBuilder = alwaysTrue,
         falseBuilder = alwaysFalse,
-        input = (),
+        input = (JoeSchmoe.facts, ()),
         trueOutput = true,
         falseOutput = false,
       )
@@ -176,7 +177,7 @@ final class LogicalOperatorSpec extends AnyWordSpec {
         builder.orBuilder,
         trueBuilder = alwaysMatch,
         falseBuilder = alwaysEmpty,
-        input = JoeSchmoe.facts,
+        input = (JoeSchmoe.facts, JoeSchmoe.facts),
         trueOutput = FactsMatch(JoeSchmoe.facts),
         falseOutput = NoFactsMatch(),
       )

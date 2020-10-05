@@ -26,19 +26,19 @@ sealed abstract class ResultSet extends Equals {
     *
     * @see [[isTrue]]
     */
-  @inline final def nonEmpty: Boolean = !isEmpty
+  final def nonEmpty: Boolean = !isEmpty
 
   /**
     * True when [[matchingFacts]] is not empty, and there exists a subset of the provided facts
     * that can be used to prove the query to be true.
     */
-  @inline final def isTrue: Boolean = !isEmpty
+  final def isTrue: Boolean = !isEmpty
 
   /**
     * True when [[matchingFacts]] is empty, and there is no subset of the facts provided that
     * can sufficiently prove the query to be true.
     */
-  @inline final def isFalse: Boolean = isEmpty
+  final def isFalse: Boolean = isEmpty
 
   /**
     * Same as [[matchingFacts]], but as a Set.
@@ -69,7 +69,7 @@ sealed abstract class ResultSet extends Equals {
   /**
     * Alias for [[union]].
     */
-  @inline final def |(o: ResultSet): ResultSet = this.union(o)
+  final def |(o: ResultSet): ResultSet = this.union(o)
 
   // SAFE: ResultSet is sealed, so all subclasses are matched on by this parent type.
   def canEqual(other: Any): Boolean = other.isInstanceOf[ResultSet]
