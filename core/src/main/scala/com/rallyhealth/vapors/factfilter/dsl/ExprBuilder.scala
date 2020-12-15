@@ -6,6 +6,7 @@ import com.rallyhealth.vapors.core.data.{NamedLens, Window}
 import com.rallyhealth.vapors.core.math.{Addition, Negative, Subtraction}
 
 import scala.collection.Factory
+import scala.reflect.ClassTag
 
 sealed class ExprBuilder[F[_], V, M[_], U, P](val returnOutput: Expr[F, V, M[U], P]) {
 
@@ -90,7 +91,8 @@ sealed class FoldableExprBuilder[F[_] : Foldable, V, M[_] : Foldable, U, P](retu
   def to[N[+_] : Foldable](
     factory: Factory[U, N[U]],
   )(implicit
-    ev: M[U] <:< Iterable[U],
+    ev: M[U] <:< IterableOnce[U],
+    tag: ClassTag[N[U]],
     captureOutput: CaptureP[F, V, N[U], P],
   ): FoldableExprBuilder[F, V, N, U, P] =
     new FoldableExprBuilder(
