@@ -25,7 +25,7 @@ package object data {
     *
     * @note not to be confused with a [[FactTypeSet]] (which is a set of [[FactType]]s, with not values)
     */
-  final type TypedFactSet[T] = SortedSet[TypedFact[T]]
+  final type TypedFactSet[T] = Set[TypedFact[T]]
 
   /**
     * A [[NamedLens]] defined over a [[TypedFact]] of a known type.

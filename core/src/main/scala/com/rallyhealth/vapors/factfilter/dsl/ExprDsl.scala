@@ -2,7 +2,6 @@ package com.rallyhealth.vapors.factfilter.dsl
 
 import cats.data.NonEmptyList
 import cats.{Foldable, Id, Monoid}
-import com.rallyhealth.vapors.core.algebra.Expr.Definition
 import com.rallyhealth.vapors.core.algebra.{Expr, ExprResult}
 import com.rallyhealth.vapors.core.data.{NamedLens, Window}
 import com.rallyhealth.vapors.core.logic.{Conjunction, Disjunction, Negation}
@@ -36,7 +35,7 @@ object ExprDsl extends ExprBuilderSyntax with ExprBuilderCatsInstances {
     evidence: Evidence = Evidence.none,
   )(implicit
     post: CaptureRootExpr[R, P],
-  ): RootExpr[R, P] =
+  ): Expr.ConstOutput[Id, FactTable, R, P] =
     Expr.ConstOutput(value, evidence, post)
 
   /**
@@ -46,13 +45,13 @@ object ExprDsl extends ExprBuilderSyntax with ExprBuilderCatsInstances {
     typedFact: TypedFact[R],
   )(implicit
     post: CaptureRootExpr[R, P],
-  ): RootExpr[R, P] =
+  ): Expr.ConstOutput[Id, FactTable, R, P] =
     const(typedFact.value, Evidence(typedFact))
 
   def input[F[_], V, P](
     implicit
     post: CaptureP[F, V, F[V], P],
-  ): Expr[F, V, F[V], P] =
+  ): Expr.ReturnInput[F, V, P] =
     Expr.ReturnInput(post)
 
   def define[T](factType: FactType[T]): DefinitionBuilder[T] = new DefinitionBuilder(factType)
@@ -80,9 +79,8 @@ object ExprDsl extends ExprBuilderSyntax with ExprBuilderCatsInstances {
     subExpr: Expr[F, V, R, P],
   )(implicit
     postResult: CaptureP[F, V, R, P],
-  ): Expr[F, V, R, P] = {
+  ): Expr.UsingDefinitions[F, V, R, P] =
     Expr.UsingDefinitions(definitions.toVector, subExpr, postResult)
-  }
 
   /**
     * Implicitly allows embedding any expression that only requires the FactTable into expression.
@@ -93,7 +91,8 @@ object ExprDsl extends ExprBuilderSyntax with ExprBuilderCatsInstances {
     expr: RootExpr[R, P],
   )(implicit
     postResult: CaptureP[F, V, R, P],
-  ): Expr[F, V, R, P] = Expr.Embed(expr, postResult)
+  ): Expr.Embed[F, V, R, P] =
+    Expr.Embed(expr, postResult)
 
   def and[F[_], V, R : Conjunction : ExtractBoolean, P](
     first: Expr[F, V, R, P],
@@ -101,7 +100,7 @@ object ExprDsl extends ExprBuilderSyntax with ExprBuilderCatsInstances {
     remaining: Expr[F, V, R, P]*,
   )(implicit
     postResult: CaptureP[F, V, R, P],
-  ): Expr[F, V, R, P] = {
+  ): Expr.And[F, V, R, P] = {
     val subExpressions = first :: NonEmptyList.of(second, remaining: _*)
     Expr.And(subExpressions, postResult)
   }
@@ -112,7 +111,7 @@ object ExprDsl extends ExprBuilderSyntax with ExprBuilderCatsInstances {
     remaining: Expr[F, V, R, P]*,
   )(implicit
     postResult: CaptureP[F, V, R, P],
-  ): Expr[F, V, R, P] = {
+  ): Expr.Or[F, V, R, P] = {
     val subExpressions = first :: NonEmptyList.of(second, remaining: _*)
     Expr.Or(subExpressions, postResult)
   }
@@ -140,7 +139,7 @@ object ExprDsl extends ExprBuilderSyntax with ExprBuilderCatsInstances {
       elseExpr: Expr[F, V, R, P],
     )(implicit
       postResult: CaptureP[F, V, R, P],
-    ): Expr[F, V, R, P] =
+    ): Expr.When[F, V, R, P] =
       Expr.When(condExpr, thenExpr, elseExpr, postResult)
   }
 
@@ -161,7 +160,7 @@ object ExprDsl extends ExprBuilderSyntax with ExprBuilderCatsInstances {
       buildSubExpr: ExprBuilder.FoldableFn[Set, TypedFact[T], M, U, P],
     )(implicit
       postResult: CaptureRootExpr[M[U], P],
-    ): RootExpr[M[U], P] =
+    ): Expr.WithFactsOfType[T, M[U], P] =
       Expr.WithFactsOfType(
         factTypeSet,
         buildSubExpr(new FoldableExprBuilder(ExprDsl.input)).returnOutput,
@@ -171,9 +170,9 @@ object ExprDsl extends ExprBuilderSyntax with ExprBuilderCatsInstances {
     def returnInput(
       implicit
       postInput: CaptureFromFacts[T, P],
-      postResult: CaptureRootExpr[Set[TypedFact[T]], P],
-    ): RootExpr[Set[TypedFact[T]], P] =
-      Expr.WithFactsOfType(factTypeSet, input(postInput), postResult)
+      postResult: CaptureRootExpr[TypedFactSet[T], P],
+    ): Expr.WithFactsOfType[T, TypedFactSet[T], P] =
+      Expr.WithFactsOfType(factTypeSet, input[Set, TypedFact[T], P](postInput), postResult)
   }
 
   def collectSome[F[_], V, M[_] : Foldable, U, R : Monoid, P](
@@ -181,7 +180,7 @@ object ExprDsl extends ExprBuilderSyntax with ExprBuilderCatsInstances {
     collectExpr: ValExpr[U, Option[R], P],
   )(implicit
     post: CaptureP[F, V, R, P],
-  ): Expr[F, V, R, P] =
+  ): Expr.CollectFromOutput[F, V, M, U, R, P] =
     Expr.CollectFromOutput(inputExpr, collectExpr, post)
 
   def selectFrom[F[_], V, S, R, P](
@@ -189,7 +188,7 @@ object ExprDsl extends ExprBuilderSyntax with ExprBuilderCatsInstances {
     lens: NamedLens[S, R],
   )(implicit
     postInput: CaptureP[F, V, R, P],
-  ): Expr[F, V, R, P] =
+  ): Expr.SelectFromOutput[F, V, S, R, P] =
     Expr.SelectFromOutput(inputExpr, lens, postInput)
 
   def add[F[_], V, R : Addition, P](
@@ -197,7 +196,7 @@ object ExprDsl extends ExprBuilderSyntax with ExprBuilderCatsInstances {
     rhs: Expr[F, V, R, P],
   )(implicit
     post: CaptureP[F, V, R, P],
-  ): Expr[F, V, R, P] =
+  ): Expr.AddOutputs[F, V, R, P] =
     Expr.AddOutputs(NonEmptyList.of(lhs, rhs), post)
 
   def subtract[F[_], V, R : Subtraction, P](
@@ -205,14 +204,14 @@ object ExprDsl extends ExprBuilderSyntax with ExprBuilderCatsInstances {
     rhs: Expr[F, V, R, P],
   )(implicit
     post: CaptureP[F, V, R, P],
-  ): Expr[F, V, R, P] =
+  ): Expr.SubtractOutputs[F, V, R, P] =
     Expr.SubtractOutputs(NonEmptyList.of(lhs, rhs), post)
 
   def negative[F[_], V, R : Negative, P](
     inputExpr: Expr[F, V, R, P],
   )(implicit
     post: CaptureP[F, V, R, P],
-  ): Expr[F, V, R, P] =
+  ): Expr.NegativeOutput[F, V, R, P] =
     Expr.NegativeOutput(inputExpr, post)
 
   def exists[F[_], V, M[_] : Foldable, U, P](
@@ -220,19 +219,19 @@ object ExprDsl extends ExprBuilderSyntax with ExprBuilderCatsInstances {
     condExpr: ValCondExpr[U, P],
   )(implicit
     post: CaptureP[F, V, Boolean, P],
-  ): CondExpr[F, V, P] =
+  ): Expr.ExistsInOutput[F, V, M, U, P] =
     Expr.ExistsInOutput(inputExpr, condExpr, post)
 
   def returnInputFoldable[F[_], V, P](
     implicit
     post: CaptureP[F, V, F[V], P],
-  ): Expr[F, V, F[V], P] =
+  ): Expr.ReturnInput[F, V, P] =
     Expr.ReturnInput(post)
 
   def returnInputValue[V, P](
     implicit
     post: CaptureP[Id, V, V, P],
-  ): Expr[Id, V, V, P] =
+  ): Expr.ReturnInput[Id, V, P] =
     Expr.ReturnInput[Id, V, P](post)
 
   def within[F[_], V, R, P](
@@ -240,6 +239,6 @@ object ExprDsl extends ExprBuilderSyntax with ExprBuilderCatsInstances {
     window: Window[R],
   )(implicit
     post: CaptureP[F, V, Boolean, P],
-  ): Expr[F, V, Boolean, P] =
+  ): Expr.OutputWithinWindow[F, V, R, P] =
     Expr.OutputWithinWindow(inputExpr, window, post)
 }
